@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserType {
+  HOST
+  CLIENT
+}
+
+enum OfferStatus {
+  ACTIVE
+  INACTIVE
+  FULL
+}
+
+enum ContractStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TransactionType {
+  STORE
+  RESTORE
+}
+
+model User {
+  id                  String            @id @default(uuid())
+  email               String            @unique
+  password            String
+  name                String
+  type                UserType
+  estimatedProduction Float             @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  batteries Battery[]
+  offers    StorageOffer[]
+  contracts StorageContract[]
+
+  @@map("users")
+}
+
+model Battery {
+  id           String   @id @default(uuid())
+  userId       String
+  capacityKwh  Float
+  availableKwh Float
+  label        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers StorageOffer[]
+
+  @@map("batteries")
+}
+
+model StorageOffer {
+  id           String      @id @default(uuid())
+  hostId       String
+  batteryId    String
+  capacityKwh  Float
+  remainingKwh Float
+  pricePerKwh  Float
+  status       OfferStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  host      User              @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  battery   Battery           @relation(fields: [batteryId], references: [id], onDelete: Cascade)
+  contracts StorageContract[]
+
+  @@map("storage_offers")
+}
+
+model StorageContract {
+  id           String         @id @default(uuid())
+  offerId      String
+  clientId     String
+  allocatedKwh Float
+  usedKwh      Float          @default(0)
+  pricePerKwh  Float
+  status       ContractStatus @default(ACTIVE)
+  startDate    DateTime       @default(now())
+  endDate      DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  offer        StorageOffer      @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  client       User              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  transactions EnergyTransaction[]
+
+  @@map("storage_contracts")
+}
+
+model EnergyTransaction {
+  id         String          @id @default(uuid())
+  contractId String
+  type       TransactionType
+  amountKwh  Float
+  pricePerKwh Float
+  totalCost  Float
+  createdAt  DateTime        @default(now())
+
+  contract StorageContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("energy_transactions")
+}
