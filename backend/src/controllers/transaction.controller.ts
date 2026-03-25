@@ -52,7 +52,7 @@ export async function getContractTransactions(
   res: Response
 ): Promise<void> {
   try {
-    const { contractId } = req.params;
+    const contractId = req.params.contractId as string;
 
     const transactions = await transactionService.getContractTransactions(
       contractId,
