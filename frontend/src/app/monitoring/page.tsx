@@ -243,7 +243,7 @@ function SupplyDemandChart({ supply, demand }: { supply: number; demand: number 
               <Cell key={i} fill={COLORS[i]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => `${value} kWh`} />
+          <Tooltip formatter={(value) => `${value} kWh`} />
         </PieChart>
       </ResponsiveContainer>
       <div className="mt-2 flex justify-center gap-6 text-sm">

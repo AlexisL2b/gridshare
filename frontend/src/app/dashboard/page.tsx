@@ -227,7 +227,7 @@ function CapacityPieChart({
               <Cell key={index} fill={PIE_COLORS[index]} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => `${value} kWh`} />
+          <Tooltip formatter={(value) => `${value} kWh`} />
         </PieChart>
       </ResponsiveContainer>
       <p className="text-center text-sm text-gray-500">
@@ -257,7 +257,7 @@ function CostBarChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="date" fontSize={12} />
           <YAxis fontSize={12} />
-          <Tooltip formatter={(value: number) => `${value} €`} />
+          <Tooltip formatter={(value) => `${value} €`} />
           <Bar dataKey="montant" name={label} fill="#10b981" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>

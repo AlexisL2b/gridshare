@@ -214,7 +214,7 @@ function HostMonitoringView({ data }: { data: HostMonitoring }) {
             <LineChart data={fmtDates(data.cumulativeRevenue)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: number) => `${v} €`} />
+              <Tooltip formatter={(v) => `${v} €`} />
               <Line type="monotone" dataKey="cumulative" name="Revenus cumulés" stroke="#10b981" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -227,7 +227,7 @@ function HostMonitoringView({ data }: { data: HostMonitoring }) {
             <BarChart data={fmtDaily(data.dailyData)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: number) => `${v} €`} />
+              <Tooltip formatter={(v) => `${v} €`} />
               <Bar dataKey="revenue" name="Revenus" fill="#10b981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -358,7 +358,7 @@ function ClientMonitoringView({ data }: { data: ClientMonitoring }) {
             <LineChart data={fmtDates(data.cumulativeCost)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: number) => `${v} €`} />
+              <Tooltip formatter={(v) => `${v} €`} />
               <Line type="monotone" dataKey="cumulative" name="Coûts cumulés" stroke="#f97316" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -371,7 +371,7 @@ function ClientMonitoringView({ data }: { data: ClientMonitoring }) {
             <BarChart data={fmtDailyClient(data.dailyData)}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="date" fontSize={11} /><YAxis fontSize={11} />
-              <Tooltip formatter={(v: number) => `${v} €`} />
+              <Tooltip formatter={(v) => `${v} €`} />
               <Bar dataKey="cost" name="Coûts" fill="#f97316" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -405,7 +405,7 @@ function ClientMonitoringView({ data }: { data: ClientMonitoring }) {
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => `${v} kWh`} />
+                <Tooltip formatter={(v) => `${v} kWh`} />
               </PieChart>
             </ResponsiveContainer>
           </div>
