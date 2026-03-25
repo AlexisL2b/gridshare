@@ -28,8 +28,8 @@ export async function getElectricityPrices(country: string): Promise<PriceEntry[
     throw new Error(`Erreur API prix : ${res.status}`);
   }
 
-  const json = await res.json();
-  const data: PriceEntry[] = (json.prices || []).map((p: { timestamp: string; price: number }) => ({
+  const json = (await res.json()) as { prices?: { timestamp: string; price: number }[] };
+  const data: PriceEntry[] = (json.prices || []).map((p) => ({
     timestamp: p.timestamp,
     price: p.price,
   }));
