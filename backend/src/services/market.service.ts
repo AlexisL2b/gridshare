@@ -63,19 +63,10 @@ export async function createOrder(input: {
   }
 
   if (input.side === "SELL") {
-    const contracts = await prisma.storageContract.findMany({
-      where: { clientId: input.userId, status: "ACTIVE" },
-    });
-    const totalStored = contracts.reduce((sum, c) => sum + c.usedKwh, 0);
-
-    const openSells = await prisma.tradeOrder.findMany({
-      where: { userId: input.userId, side: "SELL", status: { in: ["OPEN", "PARTIALLY_FILLED"] } },
-    });
-    const alreadyListed = openSells.reduce((sum, o) => sum + (o.amountKwh - o.filledKwh), 0);
-
-    if (input.amountKwh > totalStored - alreadyListed) {
+    const available = await getAvailableToSell(input.userId);
+    if (input.amountKwh > available.availableToSell) {
       throw new Error(
-        `Énergie insuffisante. Disponible : ${(totalStored - alreadyListed).toFixed(2)} kWh`
+        `Énergie insuffisante. Disponible : ${available.availableToSell.toFixed(2)} kWh`
       );
     }
   }
@@ -221,10 +212,20 @@ export async function cancelOrder(orderId: string, userId: string) {
 }
 
 export async function getAvailableToSell(userId: string) {
-  const contracts = await prisma.storageContract.findMany({
-    where: { clientId: userId, status: "ACTIVE" },
-  });
-  const totalStored = contracts.reduce((sum, c) => sum + c.usedKwh, 0);
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Utilisateur introuvable");
+
+  let totalEnergy = 0;
+
+  if (user.type === "CLIENT") {
+    const contracts = await prisma.storageContract.findMany({
+      where: { clientId: userId, status: "ACTIVE" },
+    });
+    totalEnergy = contracts.reduce((sum, c) => sum + c.usedKwh, 0);
+  } else {
+    const batteries = await prisma.battery.findMany({ where: { userId } });
+    totalEnergy = batteries.reduce((sum, b) => sum + (b.capacityKwh - b.availableKwh), 0);
+  }
 
   const openSells = await prisma.tradeOrder.findMany({
     where: { userId, side: "SELL", status: { in: ["OPEN", "PARTIALLY_FILLED"] } },
@@ -232,9 +233,9 @@ export async function getAvailableToSell(userId: string) {
   const locked = openSells.reduce((sum, o) => sum + (o.amountKwh - o.filledKwh), 0);
 
   return {
-    totalStored: parseFloat(totalStored.toFixed(2)),
+    totalStored: parseFloat(totalEnergy.toFixed(2)),
     lockedInOrders: parseFloat(locked.toFixed(2)),
-    availableToSell: parseFloat((totalStored - locked).toFixed(2)),
+    availableToSell: parseFloat(Math.max(0, totalEnergy - locked).toFixed(2)),
   };
 }
 
