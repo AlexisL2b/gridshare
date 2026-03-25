@@ -86,3 +86,23 @@ export async function cancelOrder(req: AuthRequest, res: Response): Promise<void
     res.status(400).json({ error: message });
   }
 }
+
+export async function getAvailableToSell(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const data = await marketService.getAvailableToSell(req.user!.userId);
+    res.json(data);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur";
+    res.status(500).json({ error: message });
+  }
+}
+
+export async function getUserTradingStats(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const stats = await marketService.getUserTradingStats(req.user!.userId);
+    res.json(stats);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur";
+    res.status(500).json({ error: message });
+  }
+}

@@ -219,3 +219,78 @@ export async function cancelOrder(orderId: string, userId: string) {
     data: { status: "CANCELLED" },
   });
 }
+
+export async function getAvailableToSell(userId: string) {
+  const contracts = await prisma.storageContract.findMany({
+    where: { clientId: userId, status: "ACTIVE" },
+  });
+  const totalStored = contracts.reduce((sum, c) => sum + c.usedKwh, 0);
+
+  const openSells = await prisma.tradeOrder.findMany({
+    where: { userId, side: "SELL", status: { in: ["OPEN", "PARTIALLY_FILLED"] } },
+  });
+  const locked = openSells.reduce((sum, o) => sum + (o.amountKwh - o.filledKwh), 0);
+
+  return {
+    totalStored: parseFloat(totalStored.toFixed(2)),
+    lockedInOrders: parseFloat(locked.toFixed(2)),
+    availableToSell: parseFloat((totalStored - locked).toFixed(2)),
+  };
+}
+
+export async function getUserTradingStats(userId: string) {
+  const orders = await prisma.tradeOrder.findMany({
+    where: { userId },
+    include: { buyTrades: true, sellTrades: true },
+  });
+
+  const allTrades = await prisma.trade.findMany({
+    where: {
+      OR: [
+        { buyOrder: { userId } },
+        { sellOrder: { userId } },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+    include: {
+      buyOrder: { include: { user: { select: { name: true } } } },
+      sellOrder: { include: { user: { select: { name: true } } } },
+    },
+  });
+
+  const buyTrades = allTrades.filter((t) => t.buyOrder.userId === userId);
+  const sellTrades = allTrades.filter((t) => t.sellOrder.userId === userId);
+
+  const totalBought = buyTrades.reduce((s, t) => s + t.amountKwh, 0);
+  const totalSold = sellTrades.reduce((s, t) => s + t.amountKwh, 0);
+  const totalSpent = buyTrades.reduce((s, t) => s + t.amountKwh * t.pricePerKwh, 0);
+  const totalEarned = sellTrades.reduce((s, t) => s + t.amountKwh * t.pricePerKwh, 0);
+
+  const openOrders = orders.filter((o) => o.status === "OPEN" || o.status === "PARTIALLY_FILLED");
+  const filledOrders = orders.filter((o) => o.status === "FILLED");
+
+  return {
+    summary: {
+      totalOrders: orders.length,
+      openOrders: openOrders.length,
+      filledOrders: filledOrders.length,
+      cancelledOrders: orders.filter((o) => o.status === "CANCELLED").length,
+      totalTrades: allTrades.length,
+      totalBoughtKwh: parseFloat(totalBought.toFixed(2)),
+      totalSoldKwh: parseFloat(totalSold.toFixed(2)),
+      totalSpent: parseFloat(totalSpent.toFixed(2)),
+      totalEarned: parseFloat(totalEarned.toFixed(2)),
+      netProfit: parseFloat((totalEarned - totalSpent).toFixed(2)),
+    },
+    recentTrades: allTrades.slice(0, 20),
+    openOrders: openOrders.map((o) => ({
+      id: o.id,
+      side: o.side,
+      amountKwh: o.amountKwh,
+      filledKwh: o.filledKwh,
+      pricePerKwh: o.pricePerKwh,
+      status: o.status,
+      createdAt: o.createdAt,
+    })),
+  };
+}

@@ -13,5 +13,7 @@ router.get("/orders/mine", marketController.getUserOrders as any);
 router.post("/orders", marketController.createOrder as any);
 router.delete("/orders/:id", marketController.cancelOrder as any);
 router.get("/trades", marketController.getRecentTrades as any);
+router.get("/available", marketController.getAvailableToSell as any);
+router.get("/stats", marketController.getUserTradingStats as any);
 
 export default router;

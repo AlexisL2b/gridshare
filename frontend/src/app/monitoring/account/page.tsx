@@ -97,19 +97,58 @@ interface ClientMonitoring {
 
 type MonitoringData = HostMonitoring | ClientMonitoring;
 
+interface TradingStats {
+  summary: {
+    totalOrders: number;
+    openOrders: number;
+    filledOrders: number;
+    cancelledOrders: number;
+    totalTrades: number;
+    totalBoughtKwh: number;
+    totalSoldKwh: number;
+    totalSpent: number;
+    totalEarned: number;
+    netProfit: number;
+  };
+  recentTrades: {
+    id: string;
+    amountKwh: number;
+    pricePerKwh: number;
+    createdAt: string;
+    buyOrder?: { user?: { name: string }; userId?: string };
+    sellOrder?: { user?: { name: string }; userId?: string };
+  }[];
+  openOrders: {
+    id: string;
+    side: string;
+    amountKwh: number;
+    filledKwh: number;
+    pricePerKwh: number;
+    status: string;
+    createdAt: string;
+  }[];
+}
+
 const COLORS = ["#3b82f6", "#10b981", "#f97316", "#8b5cf6", "#ec4899", "#14b8a6"];
 
 export default function AccountMonitoringPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<MonitoringData | null>(null);
+  const [tradingStats, setTradingStats] = useState<TradingStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
-    api.get<MonitoringData>("/users/me/monitoring")
-      .then(({ data }) => setData(data))
+    Promise.all([
+      api.get<MonitoringData>("/users/me/monitoring"),
+      api.get<TradingStats>("/market/stats"),
+    ])
+      .then(([monRes, tradeRes]) => {
+        setData(monRes.data);
+        setTradingStats(tradeRes.data);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user, authLoading, router]);
@@ -139,6 +178,8 @@ export default function AccountMonitoringPage() {
       </div>
 
       {data.type === "HOST" ? <HostMonitoringView data={data} /> : <ClientMonitoringView data={data} />}
+
+      {tradingStats && <TradingStatsSection stats={tradingStats} userId={user?.id} />}
     </main>
   );
 }
@@ -408,6 +449,131 @@ function ClientMonitoringView({ data }: { data: ClientMonitoring }) {
                 <Tooltip formatter={(v) => `${v} kWh`} />
               </PieChart>
             </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      )}
+    </div>
+  );
+}
+
+// ===================== TRADING STATS =====================
+
+function TradingStatsSection({ stats, userId }: { stats: TradingStats; userId?: string }) {
+  const s = stats.summary;
+
+  return (
+    <div className="mt-8 space-y-6">
+      <h2 className="text-xl font-bold">Trading</h2>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <MiniKpi label="Ordres totaux" value={String(s.totalOrders)} />
+        <MiniKpi label="Ordres ouverts" value={String(s.openOrders)} accent="blue" />
+        <MiniKpi label="Trades exécutés" value={String(s.totalTrades)} accent="green" />
+        <MiniKpi
+          label="Gains"
+          value={`${s.totalEarned.toFixed(2)} €`}
+          accent="emerald"
+        />
+        <MiniKpi
+          label="Dépenses"
+          value={`${s.totalSpent.toFixed(2)} €`}
+          accent="orange"
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MiniKpi
+          label="Profit net"
+          value={`${s.netProfit >= 0 ? "+" : ""}${s.netProfit.toFixed(2)} €`}
+          accent={s.netProfit >= 0 ? "emerald" : "orange"}
+        />
+        <MiniKpi label="Acheté" value={`${s.totalBoughtKwh} kWh`} accent="blue" />
+        <MiniKpi label="Vendu" value={`${s.totalSoldKwh} kWh`} accent="purple" />
+      </div>
+
+      {stats.openOrders.length > 0 && (
+        <ChartCard title={`Ordres ouverts (${stats.openOrders.length})`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 text-xs border-b">
+                  <th className="text-left py-2 font-medium">Type</th>
+                  <th className="text-left py-2 font-medium">Date</th>
+                  <th className="text-right py-2 font-medium">Qté (kWh)</th>
+                  <th className="text-right py-2 font-medium">Exécuté</th>
+                  <th className="text-right py-2 font-medium">Prix (€/kWh)</th>
+                  <th className="text-center py-2 font-medium">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.openOrders.map((o) => (
+                  <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-2">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        o.side === "BUY" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      }`}>
+                        {o.side === "BUY" ? "Achat" : "Vente"}
+                      </span>
+                    </td>
+                    <td className="py-2 text-gray-500 text-xs">
+                      {new Date(o.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </td>
+                    <td className="py-2 text-right font-mono">{o.amountKwh.toFixed(2)}</td>
+                    <td className="py-2 text-right font-mono">{o.filledKwh.toFixed(2)}</td>
+                    <td className="py-2 text-right font-mono">{o.pricePerKwh.toFixed(3)}</td>
+                    <td className="py-2 text-center"><StatusBadge status={o.status === "PARTIALLY_FILLED" ? "ACTIVE" : o.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ChartCard>
+      )}
+
+      {stats.recentTrades.length > 0 && (
+        <ChartCard title={`Derniers trades (${stats.recentTrades.length})`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gray-500 text-xs border-b">
+                  <th className="text-left py-2 font-medium">Date</th>
+                  <th className="text-left py-2 font-medium">Rôle</th>
+                  <th className="text-left py-2 font-medium">Contrepartie</th>
+                  <th className="text-right py-2 font-medium">Qté (kWh)</th>
+                  <th className="text-right py-2 font-medium">Prix (€/kWh)</th>
+                  <th className="text-right py-2 font-medium">Montant (€)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recentTrades.map((t) => {
+                  const isBuyer = t.buyOrder?.userId === userId;
+                  const counterpart = isBuyer ? t.sellOrder?.user?.name : t.buyOrder?.user?.name;
+                  const total = t.amountKwh * t.pricePerKwh;
+                  return (
+                    <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-2 text-gray-500 text-xs">
+                        {new Date(t.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="py-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          isBuyer ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {isBuyer ? "Acheteur" : "Vendeur"}
+                        </span>
+                      </td>
+                      <td className="py-2 text-gray-600">{counterpart || "—"}</td>
+                      <td className="py-2 text-right font-mono">{t.amountKwh.toFixed(2)}</td>
+                      <td className="py-2 text-right font-mono">{t.pricePerKwh.toFixed(3)}</td>
+                      <td className={`py-2 text-right font-mono font-bold ${
+                        isBuyer ? "text-red-600" : "text-emerald-600"
+                      }`}>
+                        {isBuyer ? "-" : "+"}{total.toFixed(2)} €
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </ChartCard>
       )}
