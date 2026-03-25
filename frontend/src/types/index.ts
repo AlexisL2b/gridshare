@@ -64,3 +64,32 @@ export interface AuthResponse {
   token: string;
   user: User;
 }
+
+export type OrderSide = "BUY" | "SELL";
+export type OrderStatus = "OPEN" | "PARTIALLY_FILLED" | "FILLED" | "CANCELLED";
+
+export interface TradeOrder {
+  id: string;
+  userId: string;
+  side: OrderSide;
+  amountKwh: number;
+  filledKwh: number;
+  pricePerKwh: number;
+  status: OrderStatus;
+  createdAt: string;
+  updatedAt: string;
+  user?: { name: string; type?: string };
+  buyTrades?: Trade[];
+  sellTrades?: Trade[];
+}
+
+export interface Trade {
+  id: string;
+  buyOrderId: string;
+  sellOrderId: string;
+  amountKwh: number;
+  pricePerKwh: number;
+  createdAt: string;
+  buyOrder?: TradeOrder;
+  sellOrder?: TradeOrder;
+}

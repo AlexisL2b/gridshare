@@ -1,10 +1,12 @@
-import { PrismaClient, UserType, TransactionType } from "@prisma/client";
+import { PrismaClient, UserType, TransactionType, OrderSide, OrderStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("Nettoyage de la base...");
+  await prisma.trade.deleteMany();
+  await prisma.tradeOrder.deleteMany();
   await prisma.energyTransaction.deleteMany();
   await prisma.storageContract.deleteMany();
   await prisma.storageOffer.deleteMany();
@@ -243,7 +245,75 @@ async function main() {
   }
 
   const totalTx = await prisma.energyTransaction.count();
-  console.log(`Seed terminé ! ${totalTx} transactions créées.`);
+
+  console.log("Création des ordres de trading...");
+
+  const sellOrders = [
+    { userId: client1.id, side: OrderSide.SELL, amountKwh: 2.0, pricePerKwh: 0.18, status: OrderStatus.OPEN },
+    { userId: client1.id, side: OrderSide.SELL, amountKwh: 1.5, pricePerKwh: 0.20, status: OrderStatus.OPEN },
+    { userId: client3.id, side: OrderSide.SELL, amountKwh: 0.5, pricePerKwh: 0.16, status: OrderStatus.OPEN },
+    { userId: client2.id, side: OrderSide.SELL, amountKwh: 1.0, pricePerKwh: 0.22, status: OrderStatus.OPEN },
+    { userId: client1.id, side: OrderSide.SELL, amountKwh: 3.0, pricePerKwh: 0.25, status: OrderStatus.OPEN },
+  ];
+
+  const buyOrders = [
+    { userId: host1.id, side: OrderSide.BUY, amountKwh: 2.5, pricePerKwh: 0.14, status: OrderStatus.OPEN },
+    { userId: host2.id, side: OrderSide.BUY, amountKwh: 1.0, pricePerKwh: 0.12, status: OrderStatus.OPEN },
+    { userId: host3.id, side: OrderSide.BUY, amountKwh: 4.0, pricePerKwh: 0.15, status: OrderStatus.OPEN },
+    { userId: host1.id, side: OrderSide.BUY, amountKwh: 1.5, pricePerKwh: 0.10, status: OrderStatus.OPEN },
+    { userId: client2.id, side: OrderSide.BUY, amountKwh: 2.0, pricePerKwh: 0.13, status: OrderStatus.OPEN },
+  ];
+
+  for (const order of [...sellOrders, ...buyOrders]) {
+    await prisma.tradeOrder.create({ data: order });
+  }
+
+  const filledSell = await prisma.tradeOrder.create({
+    data: { userId: client1.id, side: OrderSide.SELL, amountKwh: 1.0, filledKwh: 1.0, pricePerKwh: 0.17, status: OrderStatus.FILLED },
+  });
+  const filledBuy = await prisma.tradeOrder.create({
+    data: { userId: host2.id, side: OrderSide.BUY, amountKwh: 1.0, filledKwh: 1.0, pricePerKwh: 0.17, status: OrderStatus.FILLED },
+  });
+
+  const tradeDate = new Date();
+  tradeDate.setHours(tradeDate.getHours() - 2);
+
+  await prisma.trade.create({
+    data: { buyOrderId: filledBuy.id, sellOrderId: filledSell.id, amountKwh: 1.0, pricePerKwh: 0.17, createdAt: tradeDate },
+  });
+
+  const filledSell2 = await prisma.tradeOrder.create({
+    data: { userId: client3.id, side: OrderSide.SELL, amountKwh: 2.0, filledKwh: 2.0, pricePerKwh: 0.15, status: OrderStatus.FILLED },
+  });
+  const filledBuy2 = await prisma.tradeOrder.create({
+    data: { userId: host3.id, side: OrderSide.BUY, amountKwh: 2.0, filledKwh: 2.0, pricePerKwh: 0.16, status: OrderStatus.FILLED },
+  });
+
+  const tradeDate2 = new Date();
+  tradeDate2.setHours(tradeDate2.getHours() - 5);
+
+  await prisma.trade.create({
+    data: { buyOrderId: filledBuy2.id, sellOrderId: filledSell2.id, amountKwh: 2.0, pricePerKwh: 0.15, createdAt: tradeDate2 },
+  });
+
+  const partialSell = await prisma.tradeOrder.create({
+    data: { userId: client2.id, side: OrderSide.SELL, amountKwh: 3.0, filledKwh: 1.5, pricePerKwh: 0.19, status: OrderStatus.PARTIALLY_FILLED },
+  });
+  const partialBuy = await prisma.tradeOrder.create({
+    data: { userId: host1.id, side: OrderSide.BUY, amountKwh: 1.5, filledKwh: 1.5, pricePerKwh: 0.19, status: OrderStatus.FILLED },
+  });
+
+  const tradeDate3 = new Date();
+  tradeDate3.setMinutes(tradeDate3.getMinutes() - 45);
+
+  await prisma.trade.create({
+    data: { buyOrderId: partialBuy.id, sellOrderId: partialSell.id, amountKwh: 1.5, pricePerKwh: 0.19, createdAt: tradeDate3 },
+  });
+
+  const totalOrders = await prisma.tradeOrder.count();
+  const totalTrades = await prisma.trade.count();
+
+  console.log(`Seed terminé ! ${totalTx} transactions, ${totalOrders} ordres, ${totalTrades} trades.`);
   console.log("");
   console.log("Comptes de démo (mot de passe: password123) :");
   console.log("  Hôtes  : marie@gridshare.fr, pierre@gridshare.fr, sophie@gridshare.fr");

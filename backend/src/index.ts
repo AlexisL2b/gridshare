@@ -9,6 +9,7 @@ import userRoutes from "./routes/user.routes";
 import storageRoutes from "./routes/storage.routes";
 import transactionRoutes from "./routes/transaction.routes";
 import adminRoutes from "./routes/admin.routes";
+import marketRoutes from "./routes/market.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +29,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/storage", storageRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/market", marketRoutes);
 
 app.listen(PORT, () => {
   console.log(`[GridShare] Server running on http://localhost:${PORT}`);
