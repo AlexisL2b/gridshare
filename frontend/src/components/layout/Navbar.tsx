@@ -44,7 +44,7 @@ export default function Navbar() {
           <div className="flex gap-1">
             <NavLink href="/dashboard">Dashboard</NavLink>
             <NavLink href="/marketplace">Marketplace</NavLink>
-            <NavLink href="/trading">Énergie</NavLink>
+            {/* <NavLink href="/trading">Énergie</NavLink> */}
             <NavLink href="/monitoring/account">Mon Monitoring</NavLink>
             <NavLink href="/monitoring">Plateforme</NavLink>
             <NavLink href="/profile">Profil</NavLink>
